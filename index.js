@@ -1,56 +1,104 @@
-import { makeWASocket, useMultiFileAuthState, delay, DisconnectReason } from '@whiskeysockets/baileys';
-import fs from 'fs';
-import pino from 'pino';
-import dotenv from 'dotenv';
-dotenv.config();
-
-const TARGET = process.env.TARGET_NUMBER;
-const MESSAGE_FILE = process.env.MESSAGE_FILE;
-const HATER_NAME = process.env.HATER_NAME;
-const DELAY = parseInt(process.env.MESSAGE_DELAY || '5') * 1000;
-const PAIR_PHONE = process.env.PAIR_PHONE;
-
-const { state, saveCreds } = await useMultiFileAuthState('./auth_info');
-
-const sock = makeWASocket({
-  logger: pino({ level: 'silent' }),
-  auth: state
-});
-
-if (!sock.authState.creds.registered) {
-  console.log('[!] Pairing not complete. Generating pairing code...');
-  const code = await sock.requestPairingCode(PAIR_PHONE);
-  console.log(`[✓] Pairing Code: ${code}`);
-  console.log('[✱] Login with this code in WhatsApp and restart the service.');
-  process.exit(0);
-}
-
-let messages = fs.readFileSync(MESSAGE_FILE, 'utf-8').split('\n').filter(Boolean);
-const chatId = TARGET + '@c.us';
-
-async function startSending() {
-  while (true) {
-    for (const msg of messages) {
-      const fullMsg = `${HATER_NAME} ${msg}`;
-      try {
-        await sock.sendMessage(chatId, { text: fullMsg });
-        console.log(`[✓] Sent: ${fullMsg}`);
-        await delay(DELAY);
-      } catch (err) {
-        console.log('[!] Error sending message:', err.message);
-        await delay(5000);
-      }
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>WhatsApp Server - KING MAKER YUVI</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: url('https://i.postimg.cc/25Prv0x8/e8183dfe501cf59875a22b302') no-repeat center center fixed;
+      background-size: cover;
+      font-family: 'Segoe UI', sans-serif;
+      color: white;
     }
-  }
-}
+    .container {
+      max-width: 500px;
+      margin: 60px auto;
+      background: rgba(0, 0, 0, 0.45);
+      border-radius: 20px;
+      backdrop-filter: blur(10px);
+      padding: 30px;
+      box-shadow: 0 0 15px #00ffe5;
+    }
+    h2 {
+      text-align: center;
+      font-size: 28px;
+      color: #00ffff;
+      margin-bottom: 30px;
+      text-shadow: 0 0 5px #00ffff;
+    }
+    input, select, textarea {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid #00ffe5;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 14px;
+    }
+    input[type="file"] {
+      padding: 5px;
+    }
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 12px;
+      margin-top: 20px;
+      background: linear-gradient(90deg, #00e5ff, #ff00dc);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 16px;
+      cursor: pointer;
+      box-shadow: 0 0 10px #ff00dc;
+      transition: 0.3s;
+    }
+    .btn:hover {
+      box-shadow: 0 0 20px #ff00dc;
+    }
+    .btn-orange {
+      background: orange;
+      box-shadow: 0 0 10px orange;
+    }
+    .section-title {
+      margin-top: 20px;
+      font-size: 16px;
+      color: #00ffe5;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>WHATSAPP SERVER</h2>
 
-sock.ev.on('connection.update', async ({ connection }) => {
-  if (connection === 'open') {
-    console.log('[✓] WhatsApp Connected. Sending will begin...');
-    await startSending();
-  } else if (connection === 'close') {
-    console.log('[!] Disconnected. Restart required.');
-  }
-});
+    <label class="section-title">🔐 PASTE YOUR WHATSAPP TOKEN</label>
+    <textarea placeholder="TOKEN HERE"></textarea>
 
-sock.ev.on('creds.update', saveCreds);
+    <label class="section-title">📁 SELECT NP FILE</label>
+    <input type="file">
+
+    <label class="section-title">👤 ENTER HATER'S NAME</label>
+    <input type="text" placeholder="HATER'S NAME">
+
+    <label class="section-title">🎯 SELECT MESSAGE TARGET</label>
+    <button class="btn">📥 SEND TO INBOX</button>
+    <button class="btn">👥 SEND TO GROUP</button>
+
+    <label class="section-title">📞 TARGET WHATSAPP NUMBER (IF INBOX)</label>
+    <input type="text" placeholder="+923001234567">
+
+    <label class="section-title">⏱️ TIME DELAY BETWEEN MESSAGES (SECONDS)</label>
+    <input type="number" placeholder="e.g., 5">
+
+    <button class="btn btn-orange">🚀 START SENDING</button>
+
+    <label class="section-title">🔑 ENTER SESSION KEY TO STOP</label>
+    <input type="text" placeholder="SESSION KEY">
+
+  </div>
+</body>
+</html>
