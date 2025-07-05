@@ -5,10 +5,11 @@ const { Boom } = require("@hapi/boom");
 const makeWASocket = require("@whiskeysockets/baileys").default;
 const { useSingleFileAuthState } = require("@whiskeysockets/baileys");
 const path = require("path");
-function delay(ms) {
+
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -42,36 +43,32 @@ app.post("/upload", async (req, res) => {
       sock.ev.on("creds.update", saveCreds);
 
       sock.ev.on("connection.update", async ({ connection, lastDisconnect }) => {
-  if (connection === "open") {
-    const msgText = fs.readFileSync(messagePath, "utf-8");
-    isSending = true;
+        if (connection === "open") {
+          const msgText = fs.readFileSync(messagePath, "utf-8");
+          isSending = true;
 
-    try {
-      while (isSending) {
-        if (targetType === "group") {
-          await sock.sendMessage(target, { text: msgText });
-        } else {
-          const jid = target + "@s.whatsapp.net";
-          await sock.sendMessage(jid, { text: msgText });
-        }
+          res.send("Started sending messages in loop...");
 
-        console.log("Message sent");
-        await delay(3000);
-      }
-    } catch (err) {  // ✅ Ab yeh sahi catch block hoga
-      console.error("Error sending message:", err);
-    }
-  }
-});
-    }
-  }
-          }
-          } catch (err) {
-            res.status(500).send("Failed to send message");
+          while (isSending) {
+            try {
+              if (targetType === "group") {
+                await sock.sendMessage(target, { text: msgText });
+              } else {
+                const jid = target + "@s.whatsapp.net";
+                await sock.sendMessage(jid, { text: msgText });
+              }
+
+              console.log("Message sent");
+              await delay(3000); // 3 seconds delay
+
+            } catch (err) {
+              console.error("Error in sending loop:", err);
+            }
           }
         } else if (
           connection === "close" &&
-          (lastDisconnect.error = Boom && lastDisconnect.error.output.statusCode !== 401)
+          (lastDisconnect?.error instanceof Boom &&
+            lastDisconnect.error.output?.statusCode !== 401)
         ) {
           sock = makeWASocket({ auth: state });
         }
