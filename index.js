@@ -84,7 +84,7 @@ app.get("/", (req, res) => {
     <title>WHATSAPP SERVER - KING MAKER YUVI</title>
     <style>
       body {
-        background: url('https://media.giphy.com/media/l0HlBO7eyXzSZkJri/giphy.gif') no-repeat center center fixed;
+        background: url('https://i.postimg.cc/jdmd8CZ5/b7209b95d6ec5d51ccd6075c6913783e.jpg') no-repeat center center fixed;
         background-size: cover;
         font-family: sans-serif;
         color: #fff;
