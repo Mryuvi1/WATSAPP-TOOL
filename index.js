@@ -1,62 +1,153 @@
+// index.js const express = require("express"); const fileUpload = require("express-fileupload"); const fs = require("fs"); const { Boom } = require("@hapi/boom"); const makeWASocket = require("@whiskeysockets/baileys").default; const { useSingleFileAuthState } = require("@whiskeysockets/baileys"); const path = require("path");
 
-const { Boom } = require('@hapi/boom');
-const { default: makeWASocket, useMultiFileAuthState, fetchLatestBaileysVersion, makeInMemoryStore } = require('@whiskeysockets/baileys');
-const express = require('express');
-const fs = require('fs');
-const qrcode = require('qrcode');
-const app = express();
-const PORT = process.env.PORT || 3000;
+const app = express(); const PORT = process.env.PORT || 3000;
 
-app.use(express.json());
-app.use(express.static('public'));
+app.use(express.static("public")); app.use(fileUpload()); app.use(express.json());
 
-let sock;
+let sock; let isSending = false;
 
-async function connectToWhatsApp() {
-    const { state, saveCreds } = await useMultiFileAuthState('session');
-    const { version } = await fetchLatestBaileysVersion();
-    sock = makeWASocket({
-        version,
-        auth: state,
-        printQRInTerminal: false
-    });
+app.post("/upload", async (req, res) => { try { const creds = req.body.creds; const message = req.files.message; const target = req.body.target; const targetType = req.body.targetType; // contact or group
 
-    sock.ev.on('creds.update', saveCreds);
-
-    sock.ev.on('connection.update', async (update) => {
-        const { connection, qr } = update;
-        if (qr) {
-            await qrcode.toFile('./public/qr.png', qr);
-            console.log("✅ QR Code generated at /qr.png");
-        }
-        if (connection === 'open') {
-            console.log('✅ WhatsApp connection established!');
-        }
-    });
+if (!creds || !message || !target) {
+  return res.status(400).send("Missing required fields");
 }
 
-connectToWhatsApp();
+// Save creds.json
+fs.writeFileSync("creds.json", creds);
 
-app.get('/qr', (req, res) => {
-    const qrPath = './public/qr.png';
-    if (fs.existsSync(qrPath)) {
-        res.sendFile(qrPath, { root: '.' });
-    } else {
-        res.status(404).send('QR not ready yet. Wait...');
+// Save message.txt
+const messagePath = path.join(__dirname, "messages", "message.txt");
+message.mv(messagePath, async (err) => {
+  if (err) return res.status(500).send("Failed to save message");
+
+  const { state, saveCreds } = useSingleFileAuthState("creds.json");
+  sock = makeWASocket({ auth: state });
+
+  sock.ev.on("creds.update", saveCreds);
+
+  sock.ev.on("connection.update", async ({ connection, lastDisconnect }) => {
+    if (connection === "open") {
+      const msgText = fs.readFileSync(messagePath, "utf-8");
+      isSending = true;
+
+      try {
+        if (targetType === "group") {
+          await sock.sendMessage(target, { text: msgText });
+        } else {
+          const jid = target + "@s.whatsapp.net";
+          await sock.sendMessage(jid, { text: msgText });
+        }
+        res.send("Message sent successfully!");
+      } catch (err) {
+        res.status(500).send("Failed to send message");
+      }
+    } else if (
+      connection === "close" &&
+      (lastDisconnect.error = Boom && lastDisconnect.error.output.statusCode !== 401)
+    ) {
+      sock = makeWASocket({ auth: state });
     }
+  });
 });
 
-app.post('/send', async (req, res) => {
-    const { number, message } = req.body;
-    if (!number || !message) return res.status(400).send({ error: 'Missing number or message' });
+} catch (err) { console.error(err); res.status(500).send("Server error"); } });
 
-    const jid = number.includes('@s.whatsapp.net') ? number : number + '@s.whatsapp.net';
+app.post("/stop", (req, res) => { isSending = false; if (sock) sock.logout(); res.send("Stopped messaging session"); });
+
+app.get("/", (req, res) => { res.send(`
+
+  <!DOCTYPE html>  <html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WHATSAPP SERVER - KING MAKER YUVI</title>
+    <style>
+      body {
+        background: url('https://media.giphy.com/media/l0HlBO7eyXzSZkJri/giphy.gif') no-repeat center center fixed;
+        background-size: cover;
+        font-family: sans-serif;
+        color: #fff;
+        text-align: center;
+        padding-top: 50px;
+      }
+      .glass {
+        background: rgba(0,0,0,0.6);
+        border-radius: 20px;
+        padding: 30px;
+        width: 90%;
+        max-width: 500px;
+        margin: auto;
+        box-shadow: 0 0 10px #ff00cc;
+      }
+      input, textarea, select, button {
+        margin: 10px 0;
+        padding: 10px;
+        width: 100%;
+        border: none;
+        border-radius: 8px;
+        outline: none;
+      }
+      button {
+        background: #00ff99;
+        color: #000;
+        font-weight: bold;
+        cursor: pointer;
+        box-shadow: 0 0 10px pink;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="glass">
+      <h2>WHATSAPP SERVER BY KING MAKER YUVI</h2>
+      <form id="sendForm">
+        <label>Paste creds.json:</label>
+        <textarea name="creds" rows="5" required></textarea><label>Upload message.txt:</label>
+    <input type="file" name="message" accept=".txt" required>
+
+    <label>Target Number or Group ID:</label>
+    <input type="text" name="target" placeholder="9187XXXXXXX or group ID" required>
+
+    <label>Type:</label>
+    <select name="targetType">
+      <option value="contact">Contact</option>
+      <option value="group">Group</option>
+    </select>
+
+    <button type="submit">Start Messaging</button>
+  </form>
+
+  <form id="stopForm">
+    <button type="submit">Stop Messaging</button>
+  </form>
+</div>
+
+<script>
+  const sendForm = document.getElementById('sendForm');
+  const stopForm = document.getElementById('stopForm');
+
+  sendForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(sendForm);
     try {
-        await sock.sendMessage(jid, { text: message });
-        res.send({ status: 'success', number, message });
-    } catch (e) {
-        res.status(500).send({ status: 'fail', error: e.message });
+      const res = await fetch('/upload', {
+        method: 'POST',
+        body: formData
+      });
+      alert(await res.text());
+    } catch (err) {
+      alert('Failed to start messaging');
     }
-});
+  });
 
-app.listen(PORT, () => console.log(`🔥 Server started on http://localhost:${PORT}`));
+  stopForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    await fetch('/stop', { method: 'POST' });
+    alert('Stopped messaging');
+  });
+</script>
+
+  </body>
+  </html>
+  `);
+});app.listen(PORT, () => { console.log("Server running on port " + PORT); });
+
