@@ -1,8 +1,7 @@
-
 {
-  "name": "whatsapp-sender-api",
+  "name": "whatsapp-server",
   "version": "1.0.0",
-  "description": "WhatsApp API using Baileys for KING MAKER YUVI",
+  "description": "WhatsApp message sender using creds.json only",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
@@ -11,6 +10,6 @@
     "@hapi/boom": "^10.0.1",
     "@whiskeysockets/baileys": "^6.6.0",
     "express": "^4.18.2",
-    "qrcode": "^1.5.1"
+    "express-fileupload": "^1.4.0"
   }
 }
