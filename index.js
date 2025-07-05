@@ -6,9 +6,9 @@ const makeWASocket = require("@whiskeysockets/baileys").default;
 const { useSingleFileAuthState } = require("@whiskeysockets/baileys");
 const path = require("path");
 function delay(ms) {
+function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
-
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -42,30 +42,27 @@ app.post("/upload", async (req, res) => {
       sock.ev.on("creds.update", saveCreds);
 
       sock.ev.on("connection.update", async ({ connection, lastDisconnect }) => {
-        if (connection === "open") {
-          const msgText = fs.readFileSync(messagePath, "utf-8");
-          isSending = true;
+  if (connection === "open") {
+    const msgText = fs.readFileSync(messagePath, "utf-8");
+    isSending = true;
 
-          if (connection === "open") {
-  const msgText = fs.readFileSync(messagePath, "utf-8");
-  isSending = true;
-
-  res.send("Started sending messages in loop...");
-
-  while (isSending) {
     try {
-      if (targetType === "group") {
-        await sock.sendMessage(target, { text: msgText });
-      } else {
-        const jid = target + "@s.whatsapp.net";
-        await sock.sendMessage(jid, { text: msgText });
+      while (isSending) {
+        if (targetType === "group") {
+          await sock.sendMessage(target, { text: msgText });
+        } else {
+          const jid = target + "@s.whatsapp.net";
+          await sock.sendMessage(jid, { text: msgText });
+        }
+
+        console.log("Message sent");
+        await delay(3000);
       }
-
-      console.log("Message sent, waiting...");
-      await delay(3000); // 3 seconds
-
-    } catch (err) {
+    } catch (err) {  // ✅ Ab yeh sahi catch block hoga
       console.error("Error sending message:", err);
+    }
+  }
+});
     }
   }
           }
